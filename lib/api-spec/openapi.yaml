@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: customers
+    description: Customer records and payment history
+  - name: payments
+    description: Customer payment records
+  - name: dashboard
+    description: Payment summaries
 paths:
   /healthz:
     get:
@@ -24,7 +30,126 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List customers
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get a customer with payment history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetails"
+        "404":
+          description: Customer not found
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update a customer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete a customer and payment history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+  /payments:
+    post:
+      operationId: createPayment
+      tags: [payments]
+      summary: Record a customer payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Created payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard payment summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: number
+        minimum: 1
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +158,82 @@ components:
           type: string
       required:
         - status
+    Customer:
+      type: object
+      required: [id, name, phone, totalPaid, paymentCount, createdAt]
+      properties:
+        id: { type: number }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        totalPaid: { type: number }
+        paymentCount: { type: number }
+        createdAt: { type: string, format: date-time }
+    CustomerInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        phone: { type: string }
+        email: { type: string }
+        notes: { type: string }
+    CustomerUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        phone: { type: string }
+        email: { type: string }
+        notes: { type: string }
+    Payment:
+      type: object
+      required: [id, customerId, amount, reason, paidAt, createdAt]
+      properties:
+        id: { type: number }
+        customerId: { type: number }
+        amount: { type: number, minimum: 0.01 }
+        reason: { type: string, minLength: 1 }
+        paidAt: { type: string, format: date }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    PaymentInput:
+      type: object
+      required: [customerId, amount, reason, paidAt]
+      properties:
+        customerId: { type: number, minimum: 1 }
+        amount: { type: number, minimum: 0.01 }
+        reason: { type: string, minLength: 1 }
+        paidAt: { type: string, format: date }
+        notes: { type: string }
+    CustomerDetails:
+      allOf:
+        - $ref: "#/components/schemas/Customer"
+        - type: object
+          required: [payments]
+          properties:
+            payments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Payment"
+    DashboardSummary:
+      type: object
+      required: [totalRevenue, customerCount, paymentCount, recentPayments]
+      properties:
+        totalRevenue: { type: number }
+        customerCount: { type: number }
+        paymentCount: { type: number }
+        recentPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentPayment"
+    RecentPayment:
+      type: object
+      required: [id, customerId, customerName, amount, reason, paidAt]
+      properties:
+        id: { type: number }
+        customerId: { type: number }
+        customerName: { type: string }
+        amount: { type: number }
+        reason: { type: string }
+        paidAt: { type: string, format: date }
 

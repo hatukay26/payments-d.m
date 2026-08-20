@@ -1,0 +1,1 @@
+- [API schema compatibility](api-schema-compatibility.md) — generated Zod currently requires numeric OpenAPI fields instead of integer fields.

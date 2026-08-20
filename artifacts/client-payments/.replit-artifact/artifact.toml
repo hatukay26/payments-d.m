@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ניהול תשלומי לקוחות"
+description = "מערכת אישית ופשוטה לרישום תשלומים מלקוחות, חיפוש לקוחות, שמירת סיבות תשלום ומעקב אחר היסטוריית ההכנסות."
+version = "1.0.0"
+id = "artifacts/client-payments"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19475
+
+[services.development]
+run = "pnpm --filter @workspace/client-payments run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/client-payments", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/client-payments/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19475"
+BASE_PATH = "/"

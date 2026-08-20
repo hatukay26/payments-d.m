@@ -1,6 +1,6 @@
-# [Project name]
+# ניהול תשלומי לקוחות
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+מערכת RTL אישית לרישום תשלומים, חיפוש לקוחות ומעקב אחר היסטוריית תשלומים.
 
 ## Run & Operate
 
@@ -22,15 +22,21 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/client-payments/src/App.tsx` — מסכי לוח הבקרה, לקוח בודד וטפסי הוספה.
+- `artifacts/client-payments/src/index.css` — העיצוב, צבעי המותג והתאמות RTL.
+- `artifacts/api-server/src/routes/` — נתיבי הלקוחות, התשלומים וסיכום לוח הבקרה.
+- `lib/db/src/schema/customers.ts` — טבלאות הלקוחות והתשלומים.
+- `lib/api-spec/openapi.yaml` — חוזה ה-API ומקור האמת ליצירת ה-hooks.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- הנתונים נשמרים ב-PostgreSQL דרך Drizzle, כדי לשרוד רענון ולתמוך בהרחבות עתידיות.
+- מחוללי ה-API מייצרים hooks ל-React Query, והמסכים מרעננים רשימות וסיכומים לאחר כל שינוי.
+- האפליקציה משתמשת בנתיבי API יחסיים תחת `/api`, בהתאם לניתוב הפרוקסי של סביבת העבודה.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+לוח בקרה מציג הכנסות, מספר לקוחות ותשלומים אחרונים; המשתמש יכול לחפש לקוחות, להוסיף או לערוך לקוח, למחוק אותו, ולרשום לכל לקוח תשלום עם סכום, סיבה, תאריך והערה.
 
 ## User preferences
 
@@ -38,7 +44,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- לאחר שינוי ב-`lib/api-spec/openapi.yaml` יש להריץ codegen לפני typecheck של האפליקציה.
+- תהליכי העבודה המנוהלים הם מקור ההרצה של ה-API ושל ה-web; לא להפעיל שרת dev מהשורש.
 
 ## Pointers
 
