@@ -14,14 +14,16 @@ import { customersTable, paymentsTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
 type AuthenticatedRequest = Request & { userId?: string };
-const requireAuth = (req: AuthenticatedRequest, res: any, next: any) => {
+const requireAuth = async (req: AuthenticatedRequest, res: any, next: any) => {
   const auth = getAuth(req);
-  const userId = auth?.sessionClaims?.userId || auth?.userId;
+  const userId = String(auth?.sessionClaims?.userId || auth?.userId || "");
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   req.userId = userId;
+  await db.update(customersTable).set({ ownerId: userId }).where(sql`${customersTable.ownerId} is null`);
+  await db.update(paymentsTable).set({ ownerId: userId }).where(sql`${paymentsTable.ownerId} is null`);
   next();
 };
 router.use(requireAuth);
