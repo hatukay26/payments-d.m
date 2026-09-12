@@ -1,9 +1,6 @@
 import { type ChangeEvent, type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
-import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
+import { Link, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
 import {
   ArrowRight,
   Banknote,
@@ -43,12 +40,7 @@ import {
 } from '@workspace/api-client-react';
 
 const queryClient = new QueryClient();
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-function stripBase(path: string) {
-  return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path;
-}
 const money = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
 const dateFormat = new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 const shortDate = new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short' });
@@ -226,8 +218,6 @@ function PaymentForm({ customerId, onClose, onSaved, notify }: { customerId: num
 }
 
 function Sidebar() {
-  const { signOut } = useClerk();
-  const { user } = useUser();
   return (
     <aside className="fixed inset-y-0 right-0 z-20 hidden w-[248px] flex-col bg-[hsl(var(--sidebar))] px-5 py-6 text-[hsl(var(--sidebar-foreground))] lg:flex">
       <Link href="/" data-testid="link-brand" className="mb-14 flex items-center gap-3 px-2">
@@ -242,10 +232,6 @@ function Sidebar() {
       <div className="mt-auto rounded-2xl border border-[hsl(var(--sidebar-border))] bg-[hsl(var(--sidebar-accent)/0.7)] p-4">
         <div className="mb-3 flex items-center gap-2 text-[hsl(var(--sidebar-primary))]"><Check size={16} /><span className="text-xs font-bold">הכול במקום אחד</span></div>
         <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/0.68)]">רישום קטן עכשיו חוסך חיפוש גדול אחר כך.</p>
-        <div className="mt-4 border-t border-[hsl(var(--sidebar-border))] pt-3">
-          <p className="truncate text-xs text-[hsl(var(--sidebar-foreground)/0.7)]">{user?.primaryEmailAddress?.emailAddress}</p>
-          <button type="button" onClick={() => signOut({ redirectUrl: basePath || '/' })} className="mt-2 text-xs font-bold text-[hsl(var(--sidebar-primary))]">יציאה מהמערכת</button>
-        </div>
       </div>
     </aside>
   );
@@ -473,10 +459,8 @@ function AppContent() {
   return (
     <>
       <Switch>
-        <Route path="/sign-in/*?" component={SignInPage} />
-        <Route path="/sign-up/*?" component={SignUpPage} />
-        <Route path="/customers/:id"><ProtectedRoute><Shell><CustomerDetail notify={notify} /></Shell></ProtectedRoute></Route>
-        <Route path="/"><HomeRedirect notify={notify} /></Route>
+        <Route path="/customers/:id"><Shell><CustomerDetail notify={notify} /></Shell></Route>
+        <Route path="/"><Shell><Dashboard notify={notify} /></Shell></Route>
         <Route component={NotFound} />
       </Switch>
       {toast && <ToastMessage message={toast} onClose={() => setToast('')} />}
@@ -484,50 +468,12 @@ function AppContent() {
   );
 }
 
-function PublicHome() {
-  return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] px-5 py-10 text-center" dir="rtl">
-      <div className="max-w-lg">
-        <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><WalletCards size={30} /></div>
-        <p className="mb-3 text-sm font-bold text-[hsl(var(--primary))]">רשומת תשלומים</p>
-        <h1 className="text-4xl font-extrabold tracking-tight text-[hsl(var(--foreground))]">הכסף שלך, ברור יותר.</h1>
-        <p className="mx-auto mt-4 max-w-md leading-7 text-[hsl(var(--muted-foreground))]">ניהול לקוחות ותשלומים במקום אחד, עם פרטיות מלאה לכל חשבון.</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/sign-up" className="rounded-xl bg-[hsl(var(--primary))] px-6 py-3 font-extrabold text-[hsl(var(--primary-foreground))]">יצירת חשבון</Link>
-          <Link href="/sign-in" className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-6 py-3 font-bold text-[hsl(var(--foreground))]">כניסה לחשבון</Link>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function HomeRedirect({ notify }: { notify: (message: string) => void }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
-  return isSignedIn ? <ProtectedRoute><Shell><Dashboard notify={notify} /></Shell></ProtectedRoute> : <PublicHome />;
-}
-
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
-  if (!isSignedIn) return <Redirect to="/sign-in" />;
-  return <>{children}</>;
-}
-
-function SignInPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] px-4" dir="rtl"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
-}
-
-function SignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] px-4" dir="rtl"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
-}
-
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function ClerkRoutes() {
+function AppRoutes() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -541,37 +487,7 @@ function ClerkRoutes() {
 function App() {
   return (
     <WouterRouter base={basePath}>
-      <ClerkProvider
-        publishableKey={clerkPubKey}
-        proxyUrl={clerkProxyUrl}
-        appearance={{
-          theme: shadcn,
-          cssLayerName: 'clerk',
-          options: { logoPlacement: 'inside', logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-          variables: { colorPrimary: '#1f5558', colorForeground: '#17383a', colorMutedForeground: '#6d7f7d', colorBackground: '#fffdfa', colorInput: '#fbf9f4', colorInputForeground: '#17383a', colorNeutral: '#dbe2de', fontFamily: 'Assistant, sans-serif', borderRadius: '0.9rem' },
-          elements: {
-            rootBox: 'w-full flex justify-center',
-            cardBox: 'bg-[#fffdfa] rounded-2xl w-[440px] max-w-full overflow-hidden',
-            card: '!shadow-none !border-0 !bg-transparent !rounded-none',
-            footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
-            headerTitle: 'text-[#17383a] font-bold',
-            headerSubtitle: 'text-[#6d7f7d]',
-            socialButtonsBlockButtonText: 'text-[#17383a]',
-            formFieldLabel: 'text-[#17383a]',
-            footerActionLink: 'text-[#1f5558]',
-            footerActionText: 'text-[#6d7f7d]',
-            dividerText: 'text-[#6d7f7d]',
-            formButtonPrimary: 'bg-[#1f5558] hover:bg-[#174346]',
-            formFieldInput: 'bg-[#fbf9f4] text-[#17383a]',
-          },
-        }}
-        signInUrl={`${basePath}/sign-in`}
-        signUpUrl={`${basePath}/sign-up`}
-        routerPush={(to) => window.history.pushState({}, '', stripBase(to))}
-        routerReplace={(to) => window.history.replaceState({}, '', stripBase(to))}
-      >
-        <ClerkRoutes />
-      </ClerkProvider>
+      <AppRoutes />
     </WouterRouter>
   );
 }
