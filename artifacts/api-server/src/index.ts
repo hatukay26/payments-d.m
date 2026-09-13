@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import express from "express";
 import app from "./app";
@@ -17,13 +18,36 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// הגשת קבצי הפרונט-אנד הסטטיים
-const staticPath = path.resolve(process.cwd(), "../client-payments/dist");
+// בדיקת כל הנתיבים האפשריים שבהם Vite יכול לשמור את קבצי הפרונט-אנד
+const possiblePaths = [
+  path.resolve(process.cwd(), "../client-payments/dist"),
+  path.resolve(process.cwd(), "../client-payments/dist/public"),
+  path.resolve(process.cwd(), "../../client-payments/dist"),
+  path.resolve(process.cwd(), "../../client-payments/dist/public"),
+  path.resolve(process.cwd(), "dist/public"),
+  path.resolve(process.cwd(), "public"),
+];
+
+const staticPath =
+  possiblePaths.find((p) => fs.existsSync(path.join(p, "index.html"))) ||
+  possiblePaths[0];
+
+logger.info(
+  { staticPath, exists: fs.existsSync(path.join(staticPath, "index.html")) },
+  "Static files path configured",
+);
+
+// הגשת קבצים סטטיים
 app.use(express.static(staticPath));
 
-// ב-Express 5 משתמשים ב-fallback middleware לכל בקשה שאינה API
+// ניתוב כל בקשת עמוד אל ה-index.html של ה-React
 app.use((_req, res) => {
-  res.sendFile(path.join(staticPath, "index.html"));
+  const indexPath = path.join(staticPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send(`index.html not found. Checked path: ${staticPath}`);
+  }
 });
 
 app.listen(port, (err) => {
