@@ -1,142 +1,77 @@
 import { Router, type IRouter } from "express";
-import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
-import {
-  CreateCustomerBody,
-  CreatePaymentBody,
-  GetCustomerParams,
-  ListCustomersQueryParams,
-  UpdateCustomerBody,
-  UpdateCustomerParams,
-} from "@workspace/api-zod";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { customersTable, paymentsTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
-const toMoney = (value: string | number) => Number(value);
-const customerSummary = (row: typeof customersTable.$inferSelect, totalPaid: string | number, paymentCount: number) => ({
-  id: row.id,
-  name: row.name,
-  phone: row.phone,
-  email: row.email,
-  notes: row.notes,
-  totalPaid: toMoney(totalPaid),
-  paymentCount,
-  createdAt: row.createdAt.toISOString(),
-});
 
-router.get("/customers", async (req, res, next) => {
+// GET all customers with aggregated payments
+router.get("/customers", async (_req, res) => {
   try {
-    const query = ListCustomersQueryParams.parse(req.query);
-    const search = query.search?.trim();
-    const rows = await db
-      .select({
-        customer: customersTable,
-        totalPaid: sql<string>`coalesce(sum(${paymentsTable.amount}), 0)`,
-        paymentCount: sql<number>`count(${paymentsTable.id})`,
-      })
-      .from(customersTable)
-      .leftJoin(paymentsTable, eq(paymentsTable.customerId, customersTable.id))
-      .where(search
-        ? or(ilike(customersTable.name, `%${search}%`), ilike(customersTable.phone, `%${search}%`))
-        : undefined)
-      .groupBy(customersTable.id)
-      .orderBy(asc(customersTable.name));
-    res.json(rows.map((row) => customerSummary(row.customer, row.totalPaid, Number(row.paymentCount))));
-  } catch (error) {
-    next(error);
-  }
-});
+    const customers = await db.select().from(customersTable).orderBy(asc(customersTable.name));
 
-router.post("/customers", async (req, res, next) => {
-  try {
-    const body = CreateCustomerBody.parse(req.body);
-    const [row] = await db.insert(customersTable).values({
-      name: body.name,
-      phone: body.phone || null,
-      email: body.email || null,
-      notes: body.notes || null,
-    }).returning();
-    res.status(201).json(customerSummary(row, 0, 0));
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get("/customers/:id", async (req, res, next) => {
-  try {
-    const { id } = GetCustomerParams.parse(req.params);
-    const [row] = await db.select().from(customersTable).where(eq(customersTable.id, id));
-    if (!row) {
-      res.status(404).json({ error: "Customer not found" });
-      return;
-    }
-    const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.customerId, id)).orderBy(desc(paymentsTable.paidAt), desc(paymentsTable.createdAt));
-    const totalPaid = payments.reduce((sum, payment) => sum + toMoney(payment.amount), 0);
-    res.json({
-      ...customerSummary(row, totalPaid, payments.length),
-      payments: payments.map((payment) => ({
-        ...payment,
-        amount: toMoney(payment.amount),
-        paidAt: payment.paidAt,
-        createdAt: payment.createdAt.toISOString(),
-      })),
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.patch("/customers/:id", async (req, res, next) => {
-  try {
-    const { id } = UpdateCustomerParams.parse(req.params);
-    const body = UpdateCustomerBody.parse(req.body);
-    const [row] = await db.update(customersTable).set({
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.phone !== undefined ? { phone: body.phone || null } : {}),
-      ...(body.email !== undefined ? { email: body.email || null } : {}),
-      ...(body.notes !== undefined ? { notes: body.notes || null } : {}),
-    }).where(eq(customersTable.id, id)).returning();
-    if (!row) {
-      res.status(404).json({ error: "Customer not found" });
-      return;
-    }
-    const [{ totalPaid, paymentCount }] = await db.select({
+    // שליפת סך כל התשלומים לכל לקוח בנפרד בצורה פשוטה וחסינת שגיאות
+    const paymentsAgg = await db.select({
+      customerId: paymentsTable.customerId,
       totalPaid: sql<string>`coalesce(sum(${paymentsTable.amount}), 0)`,
-      paymentCount: sql<number>`count(${paymentsTable.id})`,
-    }).from(paymentsTable).where(eq(paymentsTable.customerId, id));
-    res.json(customerSummary(row, totalPaid, Number(paymentCount)));
-  } catch (error) {
-    next(error);
-  }
-});
+      paymentCount: sql<string>`count(${paymentsTable.id})`,
+    })
+    .from(paymentsTable)
+    .groupBy(paymentsTable.customerId);
 
-router.delete("/customers/:id", async (req, res, next) => {
-  try {
-    const { id } = UpdateCustomerParams.parse(req.params);
-    await db.delete(customersTable).where(eq(customersTable.id, id));
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
+    const statsMap = new Map<number, { totalPaid: number; paymentCount: number }>();
+    for (const p of paymentsAgg) {
+      statsMap.set(p.customerId, {
+        totalPaid: Number(p.totalPaid),
+        paymentCount: Number(p.paymentCount),
+      });
+    }
 
-router.post("/payments", async (req, res, next) => {
-  try {
-    const body = CreatePaymentBody.parse(req.body);
-    const [row] = await db.insert(paymentsTable).values({
-      customerId: body.customerId,
-      amount: String(body.amount),
-      reason: body.reason,
-      paidAt: body.paidAt instanceof Date ? body.paidAt.toISOString().slice(0, 10) : body.paidAt,
-      notes: body.notes || null,
-    }).returning();
-    res.status(201).json({
-      ...row,
-      amount: toMoney(row.amount),
-      createdAt: row.createdAt.toISOString(),
+    const result = customers.map((c) => {
+      const stats = statsMap.get(c.id) || { totalPaid: 0, paymentCount: 0 };
+      return {
+        ...c,
+        createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+        totalPaid: stats.totalPaid,
+        paymentCount: stats.paymentCount,
+      };
     });
-  } catch (error) {
-    next(error);
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error("CUSTOMERS GET ERROR:", error);
+    return res.status(500).json({
+      error: "Failed to fetch customers",
+      message: error.message,
+      detail: error.detail,
+    });
+  }
+});
+
+// POST new customer
+router.post("/customers", async (req, res) => {
+  try {
+    const { name, phone, email, notes, ownerId } = req.body;
+    const [newCustomer] = await db.insert(customersTable).values({
+      name,
+      phone,
+      email,
+      notes,
+      ownerId,
+    }).returning();
+
+    return res.status(201).json({
+      ...newCustomer,
+      createdAt: newCustomer.createdAt ? new Date(newCustomer.createdAt).toISOString() : new Date().toISOString(),
+      totalPaid: 0,
+      paymentCount: 0,
+    });
+  } catch (error: any) {
+    console.error("CUSTOMERS CREATE ERROR:", error);
+    return res.status(500).json({
+      error: "Failed to create customer",
+      message: error.message,
+    });
   }
 });
 
