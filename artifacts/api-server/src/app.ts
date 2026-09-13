@@ -31,4 +31,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Error handler שמחזיר את שגיאת מסד הנתונים המדויקת לדפדפן
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("SERVER / DB ERROR DETAILS:", err);
+  res.status(500).json({
+    message: err.message,
+    code: err.code,
+    detail: err.detail,
+    hint: err.hint,
+    schema: err.schema,
+    table: err.table,
+    column: err.column,
+  });
+});
+
 export default app;
