@@ -21,8 +21,8 @@ if (Number.isNaN(port) || port <= 0) {
 const staticPath = path.resolve(process.cwd(), "artifacts/client-payments/dist");
 app.use(express.static(staticPath));
 
-// ניתוב כל בקשה שאינה API לדף הראשי של ה-React
-app.get("*", (_req, res) => {
+// ב-Express 5 משתמשים ב-fallback middleware לכל בקשה שאינה API
+app.use((_req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
 });
 
