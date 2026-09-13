@@ -18,7 +18,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 // הגשת קבצי הפרונט-אנד הסטטיים
-const staticPath = path.resolve(process.cwd(), "artifacts/client-payments/dist");
+const staticPath = path.resolve(process.cwd(), "../client-payments/dist");
 app.use(express.static(staticPath));
 
 // ב-Express 5 משתמשים ב-fallback middleware לכל בקשה שאינה API
