@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "build": "esbuild src/index.ts --platform=node --bundle --format=esm --plugin=esbuild-plugin-pino --outfile=dist/index.mjs",
+    "build": "esbuild src/index.ts --platform=node --bundle --format=esm --external:pino --outfile=dist/index.mjs",
+    
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
