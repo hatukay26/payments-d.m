@@ -1,9 +1,9 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type Request, type Response } from "express";
 
-const router: IRouter = Router();
+const router = Router();
 
-router.get("/healthz", (_req: Request, res: Response) => {
-  res.json({ status: "ok" });
+router.get("/", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
 });
 
 export default router;
