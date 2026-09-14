@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-   "build": "vite build",
-    "start": "node --enable-source-maps ./dist/index.mjs",
+"build": "esbuild src/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",    "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
