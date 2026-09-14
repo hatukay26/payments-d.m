@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-"build": "esbuild src/index.ts --platform=node --bundle --format=esm --packages=external --external:@workspace/* --outfile=dist/index.mjs"
+"build": "esbuild src/index.ts --platform=node --bundle --format=esm --outfile=dist/index.mjs"
   "dependencies": {
     "@clerk/express": "^2.1.59",
     "@clerk/shared": "^4.29.2",
