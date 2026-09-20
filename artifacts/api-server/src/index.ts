@@ -41,6 +41,12 @@ logger.info(
 app.use(express.static(staticPath));
 
 // ניתוב כל בקשת עמוד אל ה-index.html של ה-React
+// אם בקשה מתחילה ב-/api ולא נמצאה בראוטר, נחזיר שגיאת 404 JSON ולא דף HTML
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API endpoint not found" });
+});
+
+// ניתוב כל בקשת עמוד אחרת אל ה-index.html של ה-React
 app.use((_req, res) => {
   const indexPath = path.join(staticPath, "index.html");
   if (fs.existsSync(indexPath)) {
@@ -48,6 +54,7 @@ app.use((_req, res) => {
   } else {
     res.status(404).send(`index.html not found. Checked path: ${staticPath}`);
   }
+});
 });
 
 app.listen(port, (err) => {
