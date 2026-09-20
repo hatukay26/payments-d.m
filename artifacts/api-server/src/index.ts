@@ -37,16 +37,15 @@ logger.info(
   "Static files path configured",
 );
 
-// הגשת קבצים סטטיים
+// הגשת קבצים סטטיים של הפרונט-אנד
 app.use(express.static(staticPath));
 
-// ניתוב כל בקשת עמוד אל ה-index.html של ה-React
-// אם בקשה מתחילה ב-/api ולא נמצאה בראוטר, נחזיר שגיאת 404 JSON ולא דף HTML
+// אם קריאה מתחילה ב-/api ולא נמצאה - נחזיר תגובת JSON של 404 במקום להחזיר דף HTML ששובר את האתר
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "API endpoint not found" });
 });
 
-// ניתוב כל בקשת עמוד אחרת אל ה-index.html של ה-React
+// ניתוב כל בקשת עמוד רגילה אל ה-index.html של ה-React
 app.use((_req, res) => {
   const indexPath = path.join(staticPath, "index.html");
   if (fs.existsSync(indexPath)) {
@@ -54,7 +53,6 @@ app.use((_req, res) => {
   } else {
     res.status(404).send(`index.html not found. Checked path: ${staticPath}`);
   }
-});
 });
 
 app.listen(port, (err) => {
