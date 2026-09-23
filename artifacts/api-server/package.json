@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-   "build": "esbuild src/index.ts --platform=node --bundle --format=cjs --packages=external --outfile=dist/index.cjs",
-    "start": "node dist/index.cjs",
+"build": "esbuild src/index.ts --platform=node --bundle --format=cjs --external:pg-native --outfile=dist/index.cjs",    "start": "node dist/index.cjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
